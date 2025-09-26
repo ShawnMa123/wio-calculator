@@ -8,6 +8,7 @@ import json
 import calendar
 from datetime import datetime, date, timedelta
 import os
+import math
 
 # Try to import chinesecalendar, fallback if not available
 try:
@@ -34,9 +35,16 @@ def init_database():
     conn.execute('''
         CREATE TABLE IF NOT EXISTS daily_status (
             date TEXT PRIMARY KEY,
-            status TEXT NOT NULL
+            status TEXT NOT NULL,
+            work_hours REAL DEFAULT 1.0
         )
     ''')
+
+    # Add work_hours column if it doesn't exist (for existing databases)
+    try:
+        conn.execute('ALTER TABLE daily_status ADD COLUMN work_hours REAL DEFAULT 1.0')
+    except sqlite3.OperationalError:
+        pass  # Column already exists
 
     # Create custom_holidays table
     conn.execute('''
@@ -91,32 +99,35 @@ def calculate_wio_stats(year, month):
     # Get all days in the month
     _, days_in_month = calendar.monthrange(year, month)
 
-    # Get daily status data
+    # Get daily status data with work hours
     conn = get_db_connection()
     status_data = conn.execute(
-        'SELECT date, status FROM daily_status WHERE date LIKE ?',
+        'SELECT date, status, COALESCE(work_hours, 1.0) as work_hours FROM daily_status WHERE date LIKE ?',
         (f'{year}-{month:02d}-%',)
     ).fetchall()
     conn.close()
 
     # Convert to dict for easy lookup
-    status_dict = {row['date']: row['status'] for row in status_data}
+    status_dict = {row['date']: {'status': row['status'], 'work_hours': row['work_hours']} for row in status_data}
 
     # Calculate statistics
-    total_workdays = 0
-    wio_days = 0
+    total_workdays = 0.0
+    wio_days = 0.0
 
     for day in range(1, days_in_month + 1):
         current_date = date(year, month, day)
         date_str = current_date.strftime('%Y-%m-%d')
 
         if is_workday(current_date):
-            total_workdays += 1
+            day_data = status_dict.get(date_str, {'status': 'WIO', 'work_hours': 1.0})
+            work_hours = day_data['work_hours']
 
-            # Check user status for this day
-            user_status = status_dict.get(date_str, 'WIO')  # Default to WIO if not set
-            if user_status == 'WIO':
-                wio_days += 1
+            # Add work hours to total workdays
+            total_workdays += work_hours
+
+            # Check user status for this day and add WIO hours
+            if day_data['status'] == 'WIO':
+                wio_days += work_hours
 
     # Calculate WIO percentage
     wio_percentage = (wio_days / total_workdays * 100) if total_workdays > 0 else 0
@@ -140,7 +151,13 @@ def get_month_data():
     # Get daily status data for the month
     conn = get_db_connection()
     status_data = conn.execute(
-        'SELECT date, status FROM daily_status WHERE date LIKE ?',
+        'SELECT date, status, COALESCE(work_hours, 1.0) as work_hours FROM daily_status WHERE date LIKE ?',
+        (f'{year}-{month:02d}-%',)
+    ).fetchall()
+
+    # Get custom holidays for this month
+    custom_holidays_data = conn.execute(
+        'SELECT date, description FROM custom_holidays WHERE date LIKE ?',
         (f'{year}-{month:02d}-%',)
     ).fetchall()
 
@@ -151,7 +168,10 @@ def get_month_data():
     conn.close()
 
     # Convert status data to dict
-    status_dict = {row['date']: row['status'] for row in status_data}
+    status_dict = {row['date']: {'status': row['status'], 'work_hours': row['work_hours']} for row in status_data}
+
+    # Convert custom holidays to dict
+    custom_holidays_dict = {row['date']: row['description'] for row in custom_holidays_data}
 
     # Get calendar data
     _, days_in_month = calendar.monthrange(year, month)
@@ -161,34 +181,52 @@ def get_month_data():
         current_date = date(year, month, day)
         date_str = current_date.strftime('%Y-%m-%d')
 
-        # Determine day type
+        # Determine day type and holiday information
+        is_custom_holiday = date_str in custom_holidays_dict
+        is_legal_holiday = HAS_CHINESE_CALENDAR and cc.is_holiday(current_date) and current_date.weekday() < 5
+
         if not is_workday(current_date):
             if current_date.weekday() >= 5:
                 day_type = 'weekend'
+                holiday_type = None
             else:
                 day_type = 'holiday'
+                if is_custom_holiday:
+                    holiday_type = 'custom'
+                elif is_legal_holiday:
+                    holiday_type = 'legal'
+                else:
+                    holiday_type = 'unknown'
         else:
             day_type = 'workday'
+            holiday_type = None
+
+        day_data = status_dict.get(date_str, {'status': 'WIO' if day_type == 'workday' else day_type, 'work_hours': 1.0})
 
         calendar_data.append({
             'date': date_str,
             'day': day,
             'weekday': current_date.weekday(),
             'type': day_type,
-            'status': status_dict.get(date_str, 'WIO' if day_type == 'workday' else day_type)
+            'status': day_data['status'],
+            'work_hours': day_data['work_hours'],
+            'holiday_type': holiday_type,
+            'holiday_description': custom_holidays_dict.get(date_str)
         })
 
     # Calculate statistics
     stats = calculate_wio_stats(year, month)
 
-    # Calculate days needed to reach target
-    days_needed = max(0, int((wio_target / 100 * stats['total_workdays']) - stats['wio_days']))
+    # Calculate days needed to reach target (using ceiling for fractional days)
+    target_wio_days = math.ceil(wio_target / 100 * stats['total_workdays'])
+    days_needed = max(0, target_wio_days - stats['wio_days'])
 
     return jsonify({
         'calendar': calendar_data,
         'stats': {
             **stats,
             'wio_target': wio_target,
+            'target_wio_days': target_wio_days,
             'days_needed': days_needed
         }
     })
@@ -198,11 +236,12 @@ def update_day_status():
     data = request.json
     target_date = data['date']
     status = data['status']
+    work_hours = data.get('work_hours', 1.0)  # Default to full day
 
     conn = get_db_connection()
     conn.execute(
-        'INSERT OR REPLACE INTO daily_status (date, status) VALUES (?, ?)',
-        (target_date, status)
+        'INSERT OR REPLACE INTO daily_status (date, status, work_hours) VALUES (?, ?, ?)',
+        (target_date, status, work_hours)
     )
     conn.commit()
     conn.close()
@@ -302,4 +341,4 @@ def delete_holiday():
 
 if __name__ == '__main__':
     init_database()
-    app.run(debug=True, host='127.0.0.1', port=8080)
+    app.run(debug=True, host='0.0.0.0', port=8080)

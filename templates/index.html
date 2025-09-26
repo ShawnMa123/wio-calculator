@@ -133,13 +133,28 @@
             color: white;
         }
 
+        .calendar-day.wio.half-day {
+            background: linear-gradient(to bottom, #48bb78 50%, #e2e8f0 50%);
+            color: white;
+        }
+
         .calendar-day.wfh {
             background: #4299e1;
             color: white;
         }
 
+        .calendar-day.wfh.half-day {
+            background: linear-gradient(to bottom, #4299e1 50%, #e2e8f0 50%);
+            color: white;
+        }
+
         .calendar-day.leave, .calendar-day.sick {
             background: #f56565;
+            color: white;
+        }
+
+        .calendar-day.leave.half-day, .calendar-day.sick.half-day {
+            background: linear-gradient(to bottom, #f56565 50%, #e2e8f0 50%);
             color: white;
         }
 
@@ -152,7 +167,19 @@
         .calendar-day.holiday {
             background: #fbb6ce;
             color: #702459;
-            cursor: default;
+            cursor: pointer;
+        }
+
+        .calendar-day.holiday.custom {
+            background: #f093fb;
+            color: white;
+            cursor: pointer;
+        }
+
+        .calendar-day.holiday.legal {
+            background: #fbb6ce;
+            color: #702459;
+            cursor: pointer;
         }
 
         .calendar-day.workday {
@@ -380,15 +407,27 @@
                 <div class="legend">
                     <div class="legend-item">
                         <div class="legend-color" style="background: #48bb78;"></div>
-                        <span>WIO (办公室)</span>
+                        <span>WIO (全天办公室)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(to bottom, #48bb78 50%, #e2e8f0 50%);"></div>
+                        <span>WIO (半天办公室)</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #4299e1;"></div>
-                        <span>WFH (居家)</span>
+                        <span>WFH (全天居家)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(to bottom, #4299e1 50%, #e2e8f0 50%);"></div>
+                        <span>WFH (半天居家)</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #f56565;"></div>
-                        <span>请假/病假</span>
+                        <span>请假/病假 (全天)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: linear-gradient(to bottom, #f56565 50%, #e2e8f0 50%);"></div>
+                        <span>请假/病假 (半天)</span>
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #cbd5e0;"></div>
@@ -396,7 +435,11 @@
                     </div>
                     <div class="legend-item">
                         <div class="legend-color" style="background: #fbb6ce;"></div>
-                        <span>节假日</span>
+                        <span>法定节假日</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f093fb;"></div>
+                        <span>自定义节假日</span>
                     </div>
                 </div>
             </div>
@@ -471,10 +514,16 @@
     </div>
 
     <div class="status-selector" id="statusSelector">
-        <div class="status-option" onclick="setDayStatus('WIO')">🏢 WIO (办公室)</div>
-        <div class="status-option" onclick="setDayStatus('WFH')">🏠 WFH (居家)</div>
-        <div class="status-option" onclick="setDayStatus('LEAVE')">🌴 请假</div>
-        <div class="status-option" onclick="setDayStatus('SICK')">🤒 病假</div>
+        <div class="status-option" onclick="setDayStatus('WIO', 1.0)">🏢 WIO (全天办公室)</div>
+        <div class="status-option" onclick="setDayStatus('WIO', 0.5)">🏢 WIO (半天办公室)</div>
+        <div class="status-option" onclick="setDayStatus('WFH', 1.0)">🏠 WFH (全天居家)</div>
+        <div class="status-option" onclick="setDayStatus('WFH', 0.5)">🏠 WFH (半天居家)</div>
+        <div class="status-option" onclick="setDayStatus('LEAVE', 1.0)">🌴 请假 (全天)</div>
+        <div class="status-option" onclick="setDayStatus('LEAVE', 0.5)">🌴 请假 (半天)</div>
+        <div class="status-option" onclick="setDayStatus('SICK', 1.0)">🤒 病假 (全天)</div>
+        <div class="status-option" onclick="setDayStatus('SICK', 0.5)">🤒 病假 (半天)</div>
+        <div class="status-option" onclick="addCustomHolidayFromCalendar()">🎄 设为节假日</div>
+        <div class="status-option" onclick="removeCustomHolidayFromCalendar()">❌ 移除节假日</div>
     </div>
 
     <script>
@@ -491,9 +540,11 @@
 
         async function loadMonthData() {
             try {
+                console.log('Loading month data for:', currentYear, currentMonth);
                 const response = await fetch(`/api/month_data?year=${currentYear}&month=${currentMonth}`);
                 const data = await response.json();
 
+                console.log('Received data:', data);
                 renderCalendar(data.calendar);
                 updateStats(data.stats);
 
@@ -505,6 +556,7 @@
         }
 
         function renderCalendar(calendarData) {
+            console.log('Rendering calendar with data:', calendarData);
             const calendar = document.getElementById('calendar');
             calendar.innerHTML = '';
 
@@ -527,13 +579,31 @@
             // Add month days
             calendarData.forEach(dayData => {
                 const dayElement = document.createElement('div');
-                dayElement.className = `calendar-day ${dayData.status.toLowerCase()}`;
+                const statusClass = dayData.status.toLowerCase();
+                const isHalfDay = dayData.work_hours && dayData.work_hours < 1.0;
+
+                dayElement.className = `calendar-day ${statusClass}`;
+                if (isHalfDay) {
+                    dayElement.className += ' half-day';
+                }
+
+                // Add holiday type class for visual distinction
+                if (dayData.holiday_type) {
+                    dayElement.className += ` ${dayData.holiday_type}`;
+                }
+
                 dayElement.textContent = dayData.day;
                 dayElement.dataset.date = dayData.date;
 
-                if (dayData.type === 'workday') {
-                    dayElement.onclick = (e) => showStatusSelector(e, dayData.date);
+                // Add tooltip for holiday description
+                if (dayData.holiday_description) {
+                    dayElement.title = dayData.holiday_description;
                 }
+
+                console.log(`Day ${dayData.day}: status=${dayData.status}, work_hours=${dayData.work_hours}, class=${dayElement.className}, type=${dayData.type}, holiday_type=${dayData.holiday_type}`);
+
+                // Make all days clickable, not just workdays
+                dayElement.onclick = (e) => showStatusSelector(e, dayData.date, dayData.type, dayData.holiday_type);
 
                 calendar.appendChild(dayElement);
             });
@@ -549,26 +619,61 @@
             const progress = Math.min(100, (stats.wio_percentage / stats.wio_target) * 100);
             document.getElementById('progressFill').style.width = `${progress}%`;
             document.getElementById('progressText').textContent =
-                `${stats.wio_days}/${Math.ceil(stats.wio_target / 100 * stats.total_workdays)} 天`;
+                `${stats.wio_days}/${stats.target_wio_days} 天`;
 
             // Update WIO target input
             document.getElementById('wioTarget').value = stats.wio_target;
         }
 
-        function showStatusSelector(event, date) {
+        let currentClickedDateType = null;
+
+        function showStatusSelector(event, date, dayType, holidayType = null) {
             event.stopPropagation();
             const selector = document.getElementById('statusSelector');
             const rect = event.target.getBoundingClientRect();
 
             currentClickedDate = date;
+            currentClickedDateType = dayType;
+
+            // Show/hide appropriate options based on day type
+            const workdayOptions = selector.querySelectorAll('.status-option:not([onclick*="Holiday"])');
+            const addHolidayOption = selector.querySelector('.status-option[onclick*="addCustomHolidayFromCalendar"]');
+            const removeHolidayOption = selector.querySelector('.status-option[onclick*="removeCustomHolidayFromCalendar"]');
+
+            if (dayType === 'workday') {
+                // Show all options for workdays
+                workdayOptions.forEach(option => option.style.display = 'block');
+                addHolidayOption.style.display = 'block';
+                removeHolidayOption.style.display = 'none';
+            } else {
+                // For weekends/holidays, only show holiday management options
+                workdayOptions.forEach(option => option.style.display = 'none');
+
+                if (holidayType === 'custom') {
+                    // Custom holiday - show remove option
+                    addHolidayOption.style.display = 'none';
+                    removeHolidayOption.style.display = 'block';
+                } else if (holidayType === 'legal') {
+                    // Legal holiday - show add custom holiday option (to override)
+                    addHolidayOption.style.display = 'block';
+                    removeHolidayOption.style.display = 'none';
+                } else {
+                    // Weekend or other - show add holiday option
+                    addHolidayOption.style.display = 'block';
+                    removeHolidayOption.style.display = 'none';
+                }
+            }
+
             selector.style.display = 'block';
             selector.style.top = `${rect.bottom + window.scrollY + 5}px`;
             selector.style.left = `${rect.left + window.scrollX + rect.width/2}px`;
             selector.style.transform = 'translateX(-50%)';
         }
 
-        async function setDayStatus(status) {
+        async function setDayStatus(status, workHours = 1.0) {
             if (!currentClickedDate) return;
+
+            console.log('Setting day status:', currentClickedDate, status, 'work hours:', workHours);
 
             try {
                 const response = await fetch('/api/day_status', {
@@ -578,12 +683,18 @@
                     },
                     body: JSON.stringify({
                         date: currentClickedDate,
-                        status: status
+                        status: status,
+                        work_hours: workHours
                     })
                 });
 
+                console.log('Response status:', response.status);
+
                 if (response.ok) {
+                    console.log('Status updated successfully, reloading month data...');
                     loadMonthData();
+                } else {
+                    console.error('Failed to update status:', response.statusText);
                 }
             } catch (error) {
                 console.error('Error updating day status:', error);
@@ -701,6 +812,69 @@
             } catch (error) {
                 console.error('Error deleting holiday:', error);
             }
+        }
+
+        async function addCustomHolidayFromCalendar() {
+            if (!currentClickedDate) return;
+
+            const description = prompt('请输入节假日描述:', '自定义节假日');
+            if (!description) return;
+
+            try {
+                const response = await fetch('/api/holidays', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        date: currentClickedDate,
+                        description: description,
+                        is_workday: false
+                    })
+                });
+
+                if (response.ok) {
+                    console.log('Holiday added successfully');
+                    loadHolidays();
+                    loadMonthData();
+                    alert('节假日添加成功！');
+                } else {
+                    alert('添加节假日失败！');
+                }
+            } catch (error) {
+                console.error('Error adding holiday from calendar:', error);
+                alert('添加节假日失败！');
+            }
+
+            document.getElementById('statusSelector').style.display = 'none';
+            currentClickedDate = null;
+        }
+
+        async function removeCustomHolidayFromCalendar() {
+            if (!currentClickedDate) return;
+
+            if (!confirm('确定要移除这个自定义节假日吗？（法定节假日无法移除）')) return;
+
+            try {
+                const response = await fetch(`/api/holidays?date=${currentClickedDate}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    console.log('Holiday removed successfully');
+                    loadHolidays();
+                    loadMonthData();
+                    alert('节假日移除成功！');
+                } else {
+                    alert('移除节假日失败！可能这是法定节假日或该日期没有自定义节假日。');
+                }
+            } catch (error) {
+                console.error('Error removing holiday from calendar:', error);
+                alert('移除节假日失败！');
+            }
+
+            document.getElementById('statusSelector').style.display = 'none';
+            currentClickedDate = null;
         }
 
         // Hide status selector when clicking outside
