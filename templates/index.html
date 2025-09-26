@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WIO Calculator - 办公室工作统计系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .calendar-section, .stats-section, .settings-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .month-nav {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .nav-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .nav-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .current-month {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .calendar-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+            position: relative;
+            min-height: 50px;
+        }
+
+        .calendar-header-day {
+            background: #e2e8f0;
+            color: #4a5568;
+            font-weight: bold;
+            cursor: default;
+        }
+
+        .calendar-day.wio {
+            background: #48bb78;
+            color: white;
+        }
+
+        .calendar-day.wfh {
+            background: #4299e1;
+            color: white;
+        }
+
+        .calendar-day.leave, .calendar-day.sick {
+            background: #f56565;
+            color: white;
+        }
+
+        .calendar-day.weekend {
+            background: #cbd5e0;
+            color: #718096;
+            cursor: default;
+        }
+
+        .calendar-day.holiday {
+            background: #fbb6ce;
+            color: #702459;
+            cursor: default;
+        }
+
+        .calendar-day.workday {
+            background: #edf2f7;
+            color: #4a5568;
+        }
+
+        .calendar-day:hover:not(.weekend):not(.holiday) {
+            transform: scale(1.05);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .stats-grid {
+            display: grid;
+            gap: 15px;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-item.primary {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .stat-item.success {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+
+        .stat-item.warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+
+        .settings-form {
+            display: grid;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .form-group input {
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .status-selector {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            display: none;
+        }
+
+        .status-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .status-option:hover {
+            background: #f7fafc;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .holidays-section {
+            margin-top: 20px;
+        }
+
+        .holiday-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .holiday-item {
+            padding: 8px;
+            border-bottom: 1px solid #f7fafc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .holiday-item:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .calendar {
+                font-size: 14px;
+            }
+
+            .calendar-day {
+                min-height: 40px;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏢 WIO Calculator</h1>
+            <p>办公室工作统计与管理系统 | Work In Office Statistics</p>
+        </div>
+
+        <div class="main-content">
+            <div class="calendar-section">
+                <div class="section-title">📅 工作日历 Calendar</div>
+
+                <div class="calendar-header">
+                    <div class="month-nav">
+                        <button class="nav-btn" onclick="changeMonth(-1)">← 上月</button>
+                        <div class="current-month" id="currentMonth"></div>
+                        <button class="nav-btn" onclick="changeMonth(1)">下月 →</button>
+                    </div>
+                </div>
+
+                <div class="calendar" id="calendar"></div>
+
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #48bb78;"></div>
+                        <span>WIO (办公室)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #4299e1;"></div>
+                        <span>WFH (居家)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #f56565;"></div>
+                        <span>请假/病假</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #cbd5e0;"></div>
+                        <span>周末</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: #fbb6ce;"></div>
+                        <span>节假日</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-section">
+                <div class="section-title">📊 统计信息 Statistics</div>
+
+                <div class="stats-grid">
+                    <div class="stat-item primary">
+                        <div class="stat-value" id="wioPercentage">0%</div>
+                        <div class="stat-label">当前WIO比例</div>
+                    </div>
+
+                    <div class="stat-item success">
+                        <div class="stat-value" id="wioDays">0</div>
+                        <div class="stat-label">已WIO天数</div>
+                    </div>
+
+                    <div class="stat-item warning">
+                        <div class="stat-value" id="targetPercentage">40%</div>
+                        <div class="stat-label">目标比例</div>
+                    </div>
+
+                    <div class="stat-item">
+                        <div class="stat-value" id="daysNeeded">0</div>
+                        <div class="stat-label">还需WIO天数</div>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 10px;">
+                        <span style="font-weight: 500;">进度条 Progress</span>
+                        <span id="progressText" style="font-size: 14px; color: #718096;"></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="section-title">⚙️ 设置 Settings</div>
+
+            <div class="settings-form">
+                <div class="form-group">
+                    <label for="wioTarget">WIO目标比例 (%):</label>
+                    <input type="number" id="wioTarget" min="0" max="100" step="1" value="40">
+                </div>
+
+                <button class="btn" onclick="updateSettings()">保存设置 Save Settings</button>
+            </div>
+
+            <div class="holidays-section">
+                <div class="section-title">🎄 节假日管理 Holiday Management</div>
+
+                <div class="form-group">
+                    <label for="holidayDate">添加自定义节假日:</label>
+                    <input type="date" id="holidayDate">
+                </div>
+
+                <div class="form-group">
+                    <label for="holidayDesc">描述:</label>
+                    <input type="text" id="holidayDesc" placeholder="例如：公司团建日">
+                </div>
+
+                <button class="btn" onclick="addHoliday()">添加节假日 Add Holiday</button>
+
+                <div class="holiday-list" id="holidayList"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-selector" id="statusSelector">
+        <div class="status-option" onclick="setDayStatus('WIO')">🏢 WIO (办公室)</div>
+        <div class="status-option" onclick="setDayStatus('WFH')">🏠 WFH (居家)</div>
+        <div class="status-option" onclick="setDayStatus('LEAVE')">🌴 请假</div>
+        <div class="status-option" onclick="setDayStatus('SICK')">🤒 病假</div>
+    </div>
+
+    <script>
+        let currentYear = new Date().getFullYear();
+        let currentMonth = new Date().getMonth() + 1;
+        let currentClickedDate = null;
+
+        const monthNames = [
+            '一月', '二月', '三月', '四月', '五月', '六月',
+            '七月', '八月', '九月', '十月', '十一月', '十二月'
+        ];
+
+        const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+
+        async function loadMonthData() {
+            try {
+                const response = await fetch(`/api/month_data?year=${currentYear}&month=${currentMonth}`);
+                const data = await response.json();
+
+                renderCalendar(data.calendar);
+                updateStats(data.stats);
+
+                document.getElementById('currentMonth').textContent =
+                    `${currentYear}年 ${monthNames[currentMonth - 1]}`;
+            } catch (error) {
+                console.error('Error loading month data:', error);
+            }
+        }
+
+        function renderCalendar(calendarData) {
+            const calendar = document.getElementById('calendar');
+            calendar.innerHTML = '';
+
+            // Add header days
+            weekDays.forEach(day => {
+                const headerDay = document.createElement('div');
+                headerDay.className = 'calendar-day calendar-header-day';
+                headerDay.textContent = day;
+                calendar.appendChild(headerDay);
+            });
+
+            // Add empty cells for days before month start
+            const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+            for (let i = 0; i < firstDay; i++) {
+                const emptyDay = document.createElement('div');
+                emptyDay.className = 'calendar-day';
+                calendar.appendChild(emptyDay);
+            }
+
+            // Add month days
+            calendarData.forEach(dayData => {
+                const dayElement = document.createElement('div');
+                dayElement.className = `calendar-day ${dayData.status.toLowerCase()}`;
+                dayElement.textContent = dayData.day;
+                dayElement.dataset.date = dayData.date;
+
+                if (dayData.type === 'workday') {
+                    dayElement.onclick = (e) => showStatusSelector(e, dayData.date);
+                }
+
+                calendar.appendChild(dayElement);
+            });
+        }
+
+        function updateStats(stats) {
+            document.getElementById('wioPercentage').textContent = `${stats.wio_percentage}%`;
+            document.getElementById('wioDays').textContent = stats.wio_days;
+            document.getElementById('targetPercentage').textContent = `${stats.wio_target}%`;
+            document.getElementById('daysNeeded').textContent = Math.max(0, stats.days_needed);
+
+            // Update progress bar
+            const progress = Math.min(100, (stats.wio_percentage / stats.wio_target) * 100);
+            document.getElementById('progressFill').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent =
+                `${stats.wio_days}/${Math.ceil(stats.wio_target / 100 * stats.total_workdays)} 天`;
+
+            // Update WIO target input
+            document.getElementById('wioTarget').value = stats.wio_target;
+        }
+
+        function showStatusSelector(event, date) {
+            event.stopPropagation();
+            const selector = document.getElementById('statusSelector');
+            const rect = event.target.getBoundingClientRect();
+
+            currentClickedDate = date;
+            selector.style.display = 'block';
+            selector.style.top = `${rect.bottom + window.scrollY + 5}px`;
+            selector.style.left = `${rect.left + window.scrollX + rect.width/2}px`;
+            selector.style.transform = 'translateX(-50%)';
+        }
+
+        async function setDayStatus(status) {
+            if (!currentClickedDate) return;
+
+            try {
+                const response = await fetch('/api/day_status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        date: currentClickedDate,
+                        status: status
+                    })
+                });
+
+                if (response.ok) {
+                    loadMonthData();
+                }
+            } catch (error) {
+                console.error('Error updating day status:', error);
+            }
+
+            document.getElementById('statusSelector').style.display = 'none';
+            currentClickedDate = null;
+        }
+
+        function changeMonth(direction) {
+            currentMonth += direction;
+            if (currentMonth > 12) {
+                currentMonth = 1;
+                currentYear++;
+            } else if (currentMonth < 1) {
+                currentMonth = 12;
+                currentYear--;
+            }
+            loadMonthData();
+        }
+
+        async function updateSettings() {
+            const wioTarget = parseFloat(document.getElementById('wioTarget').value);
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        wio_target: wioTarget
+                    })
+                });
+
+                if (response.ok) {
+                    loadMonthData();
+                    alert('设置已保存！');
+                }
+            } catch (error) {
+                console.error('Error updating settings:', error);
+                alert('保存设置失败！');
+            }
+        }
+
+        async function addHoliday() {
+            const date = document.getElementById('holidayDate').value;
+            const description = document.getElementById('holidayDesc').value;
+
+            if (!date || !description) {
+                alert('请填写完整信息！');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/holidays', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        date: date,
+                        description: description,
+                        is_workday: false
+                    })
+                });
+
+                if (response.ok) {
+                    document.getElementById('holidayDate').value = '';
+                    document.getElementById('holidayDesc').value = '';
+                    loadHolidays();
+                    loadMonthData();
+                    alert('节假日添加成功！');
+                }
+            } catch (error) {
+                console.error('Error adding holiday:', error);
+                alert('添加节假日失败！');
+            }
+        }
+
+        async function loadHolidays() {
+            try {
+                const response = await fetch(`/api/holidays?year=${currentYear}`);
+                const holidays = await response.json();
+
+                const holidayList = document.getElementById('holidayList');
+                holidayList.innerHTML = '';
+
+                holidays.filter(h => h.type === 'custom').forEach(holiday => {
+                    const item = document.createElement('div');
+                    item.className = 'holiday-item';
+                    item.innerHTML = `
+                        <span>${holiday.date} - ${holiday.description}</span>
+                        <button onclick="deleteHoliday('${holiday.date}')" style="color: #f56565; background: none; border: none; cursor: pointer;">删除</button>
+                    `;
+                    holidayList.appendChild(item);
+                });
+            } catch (error) {
+                console.error('Error loading holidays:', error);
+            }
+        }
+
+        async function deleteHoliday(date) {
+            if (!confirm('确定要删除这个节假日吗？')) return;
+
+            try {
+                const response = await fetch(`/api/holidays?date=${date}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadHolidays();
+                    loadMonthData();
+                }
+            } catch (error) {
+                console.error('Error deleting holiday:', error);
+            }
+        }
+
+        // Hide status selector when clicking outside
+        document.addEventListener('click', () => {
+            document.getElementById('statusSelector').style.display = 'none';
+        });
+
+        // Initialize
+        window.onload = function() {
+            loadMonthData();
+            loadHolidays();
+        };
+    </script>
+</body>
+</html>
