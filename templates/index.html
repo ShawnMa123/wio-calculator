@@ -648,7 +648,7 @@
             const removeHolidayOption = selector.querySelector('.status-option[onclick*="removeCustomHolidayFromCalendar"]');
 
             if (dayType === 'workday') {
-                // Show all options for workdays
+                // Show all options for workdays (including set as holiday)
                 workdayOptions.forEach(option => option.style.display = 'block');
                 addHolidayOption.style.display = 'block';
                 removeHolidayOption.style.display = 'none';
@@ -661,11 +661,11 @@
                     addHolidayOption.style.display = 'none';
                     removeHolidayOption.style.display = 'block';
                 } else if (holidayType === 'legal') {
-                    // Legal holiday - show add custom holiday option (to override)
-                    addHolidayOption.style.display = 'block';
+                    // Legal holiday - can't modify legal holidays
+                    addHolidayOption.style.display = 'none';
                     removeHolidayOption.style.display = 'none';
                 } else {
-                    // Weekend or other - show add holiday option
+                    // Weekend - show add holiday option
                     addHolidayOption.style.display = 'block';
                     removeHolidayOption.style.display = 'none';
                 }
@@ -851,6 +851,18 @@
             if (!description) return;
 
             try {
+                // 先删除该日期的 WIO/WFH 状态（如果存在）
+                await fetch('/api/day_status', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        date: currentClickedDate
+                    })
+                });
+
+                // 再添加节假日
                 const response = await fetch('/api/holidays', {
                     method: 'POST',
                     headers: {
@@ -864,10 +876,10 @@
                 });
 
                 if (response.ok) {
-                    console.log('Holiday added successfully');
+                    console.log('Holiday added successfully, WIO/WFH status cleared');
                     loadHolidays();
                     loadMonthData();
-                    alert('节假日添加成功！');
+                    alert('节假日添加成功！已清除该日期的工作状态。');
                 } else {
                     alert('添加节假日失败！');
                 }

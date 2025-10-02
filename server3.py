@@ -248,6 +248,19 @@ def update_day_status():
 
     return jsonify({'success': True})
 
+@app.route('/api/day_status', methods=['DELETE'])
+def delete_day_status():
+    """Delete WIO/WFH status for a specific date (used when converting to holiday)"""
+    data = request.json
+    target_date = data['date']
+
+    conn = get_db_connection()
+    conn.execute('DELETE FROM daily_status WHERE date = ?', (target_date,))
+    conn.commit()
+    conn.close()
+
+    return jsonify({'success': True})
+
 @app.route('/api/settings', methods=['GET'])
 def get_settings():
     conn = get_db_connection()
