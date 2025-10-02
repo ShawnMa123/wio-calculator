@@ -404,6 +404,78 @@ def delete_holiday():
 
     return jsonify({'success': True})
 
+@app.route('/api/export')
+@login_required
+def export_data():
+    """Export all data as JSON"""
+    conn = get_db_connection()
+
+    # Get all daily status records
+    daily_status = conn.execute('SELECT * FROM daily_status ORDER BY date').fetchall()
+
+    # Get all custom holidays
+    custom_holidays = conn.execute('SELECT * FROM custom_holidays ORDER BY date').fetchall()
+
+    # Get all settings
+    settings = conn.execute('SELECT * FROM settings').fetchall()
+
+    conn.close()
+
+    # Convert to dicts
+    export_data = {
+        'daily_status': [dict(row) for row in daily_status],
+        'custom_holidays': [dict(row) for row in custom_holidays],
+        'settings': {row['key']: row['value'] for row in settings},
+        'export_date': datetime.now().isoformat(),
+        'version': '1.0'
+    }
+
+    return jsonify(export_data)
+
+@app.route('/api/import', methods=['POST'])
+@login_required
+def import_data():
+    """Import data from JSON"""
+    data = request.json
+
+    if not data or 'version' not in data:
+        return jsonify({'success': False, 'error': '无效的导入数据格式'}), 400
+
+    try:
+        conn = get_db_connection()
+
+        # Import daily status
+        if 'daily_status' in data:
+            for record in data['daily_status']:
+                conn.execute(
+                    'INSERT OR REPLACE INTO daily_status (date, status, work_hours) VALUES (?, ?, ?)',
+                    (record['date'], record['status'], record.get('work_hours', 1.0))
+                )
+
+        # Import custom holidays
+        if 'custom_holidays' in data:
+            for holiday in data['custom_holidays']:
+                conn.execute(
+                    'INSERT OR REPLACE INTO custom_holidays (date, description, is_workday) VALUES (?, ?, ?)',
+                    (holiday['date'], holiday['description'], holiday.get('is_workday', 0))
+                )
+
+        # Import settings
+        if 'settings' in data:
+            for key, value in data['settings'].items():
+                conn.execute(
+                    'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+                    (key, value)
+                )
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': '数据导入成功'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 if __name__ == '__main__':
     init_database()
     app.run(debug=True, host='0.0.0.0', port=8080)

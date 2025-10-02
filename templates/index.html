@@ -448,6 +448,166 @@
             border-radius: 4px;
         }
 
+        /* Data Management Section */
+        .data-management-section {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--divider-color);
+        }
+
+        .data-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn-export {
+            background: var(--success) !important;
+        }
+
+        .btn-export:hover {
+            background: #43A047 !important;
+        }
+
+        .btn-import {
+            background: var(--info) !important;
+        }
+
+        .btn-import:hover {
+            background: #1976D2 !important;
+        }
+
+        /* Quick Status Section */
+        .quick-status-section {
+            background: var(--surface);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+        }
+
+        .quick-status-header {
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .quick-status-label {
+            font-weight: 500;
+            color: var(--text-primary);
+            font-size: 1em;
+        }
+
+        .quick-status-date {
+            color: var(--primary-color);
+            font-weight: 500;
+            font-size: 1em;
+        }
+
+        .quick-status-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .quick-btn {
+            background: var(--surface);
+            border: 2px solid var(--divider-color);
+            border-radius: 4px;
+            padding: 10px 16px;
+            font-size: 0.875em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-primary);
+        }
+
+        .quick-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+        }
+
+        .quick-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+
+        .quick-btn-wio {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .quick-btn-wio:hover {
+            background: var(--success);
+            color: white;
+        }
+
+        .quick-btn-wio-half {
+            border-color: #81C784;
+            color: #81C784;
+        }
+
+        .quick-btn-wio-half:hover {
+            background: #81C784;
+            color: white;
+        }
+
+        .quick-btn-wfh {
+            border-color: var(--info);
+            color: var(--info);
+        }
+
+        .quick-btn-wfh:hover {
+            background: var(--info);
+            color: white;
+        }
+
+        .quick-btn-wfh-half {
+            border-color: #64B5F6;
+            color: #64B5F6;
+        }
+
+        .quick-btn-wfh-half:hover {
+            background: #64B5F6;
+            color: white;
+        }
+
+        .quick-btn-leave {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .quick-btn-leave:hover {
+            background: var(--warning);
+            color: white;
+        }
+
+        .quick-btn-sick {
+            border-color: var(--error);
+            color: var(--error);
+        }
+
+        .quick-btn-sick:hover {
+            background: var(--error);
+            color: white;
+        }
+
+        .quick-status-current {
+            margin-top: 12px;
+            padding: 8px 12px;
+            background: #E3F2FD;
+            border-radius: 4px;
+            font-size: 0.875em;
+            color: var(--text-primary);
+            display: none;
+        }
+
+        .quick-status-current.active {
+            display: block;
+        }
+
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -478,6 +638,35 @@
                     🚪 退出登录
                 </a>
             </div>
+        </div>
+
+        <!-- Today's Quick Status -->
+        <div class="quick-status-section">
+            <div class="quick-status-header">
+                <span class="quick-status-label">今日状态 Today:</span>
+                <span class="quick-status-date" id="todayDate"></span>
+            </div>
+            <div class="quick-status-buttons">
+                <button class="quick-btn quick-btn-wio" onclick="quickMarkToday('WIO', 1.0)">
+                    🏢 办公室
+                </button>
+                <button class="quick-btn quick-btn-wio-half" onclick="quickMarkToday('WIO', 0.5)">
+                    🏢 半天办公室
+                </button>
+                <button class="quick-btn quick-btn-wfh" onclick="quickMarkToday('WFH', 1.0)">
+                    🏠 居家
+                </button>
+                <button class="quick-btn quick-btn-wfh-half" onclick="quickMarkToday('WFH', 0.5)">
+                    🏠 半天居家
+                </button>
+                <button class="quick-btn quick-btn-leave" onclick="quickMarkToday('LEAVE', 1.0)">
+                    🌴 请假
+                </button>
+                <button class="quick-btn quick-btn-sick" onclick="quickMarkToday('SICK', 1.0)">
+                    🤒 病假
+                </button>
+            </div>
+            <div class="quick-status-current" id="currentTodayStatus"></div>
         </div>
 
         <div class="main-content">
@@ -599,6 +788,26 @@
                 <button class="btn" onclick="addHoliday()">添加节假日 Add Holiday</button>
 
                 <div class="holiday-list" id="holidayList"></div>
+            </div>
+
+            <div class="data-management-section">
+                <div class="section-title">💾 数据管理 Data Management</div>
+
+                <div class="data-buttons">
+                    <button class="btn btn-export" onclick="exportData()">
+                        📥 导出数据 Export Data
+                    </button>
+                    <button class="btn btn-import" onclick="document.getElementById('importFile').click()">
+                        📤 导入数据 Import Data
+                    </button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+                </div>
+
+                <div class="data-info">
+                    <p style="font-size: 0.875em; color: var(--text-secondary); margin-top: 12px;">
+                        💡 导出数据将保存所有工作记录、自定义节假日和设置到JSON文件。导入时会合并数据，不会覆盖现有记录。
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -1003,6 +1212,130 @@
             currentClickedDate = null;
         }
 
+        // Quick mark today's status
+        async function quickMarkToday(status, workHours) {
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+            // Set currentClickedDate to today
+            currentClickedDate = todayStr;
+
+            // Use existing setDayStatus function
+            await setDayStatus(status, workHours);
+
+            // Update current status display
+            const statusTexts = {
+                'WIO': workHours === 1.0 ? '🏢 办公室 (全天)' : '🏢 办公室 (半天)',
+                'WFH': workHours === 1.0 ? '🏠 居家办公 (全天)' : '🏠 居家办公 (半天)',
+                'LEAVE': '🌴 请假',
+                'SICK': '🤒 病假'
+            };
+
+            const statusDisplay = document.getElementById('currentTodayStatus');
+            statusDisplay.textContent = `✓ 已标记今日为：${statusTexts[status]}`;
+            statusDisplay.style.display = 'block';
+            statusDisplay.style.opacity = '1';
+
+            // Fade out after 3 seconds
+            setTimeout(() => {
+                statusDisplay.style.opacity = '0';
+                setTimeout(() => {
+                    statusDisplay.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+
+        // Initialize today's date display
+        function initQuickStatus() {
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+            document.getElementById('todayDate').textContent = dateStr;
+        }
+
+        // Export data to JSON file
+        async function exportData() {
+            try {
+                const response = await fetch('/api/export');
+                if (!response.ok) {
+                    throw new Error('导出失败');
+                }
+
+                const data = await response.json();
+
+                // Create filename with current date
+                const now = new Date();
+                const filename = `wio-data-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}.json`;
+
+                // Create download link
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                alert('✓ 数据导出成功！文件已下载。');
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                alert('❌ 导出数据失败：' + error.message);
+            }
+        }
+
+        // Import data from JSON file
+        async function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Confirm before importing
+            if (!confirm('导入数据将合并到现有数据中。确定要继续吗？')) {
+                event.target.value = '';
+                return;
+            }
+
+            try {
+                const fileContent = await file.text();
+                const data = JSON.parse(fileContent);
+
+                // Validate data format
+                if (!data.version) {
+                    throw new Error('无效的数据文件格式');
+                }
+
+                const response = await fetch('/api/import', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✓ 数据导入成功！页面将刷新以显示最新数据。');
+                    // Reload all data
+                    loadMonthData();
+                    loadHolidays();
+                } else {
+                    throw new Error(result.error || '导入失败');
+                }
+            } catch (error) {
+                console.error('Error importing data:', error);
+                alert('❌ 导入数据失败：' + error.message);
+            }
+
+            // Reset file input
+            event.target.value = '';
+        }
+
         // Hide status selector when clicking outside
         document.addEventListener('click', () => {
             document.getElementById('statusSelector').style.display = 'none';
@@ -1012,6 +1345,7 @@
         window.onload = function() {
             loadMonthData();
             loadHolidays();
+            initQuickStatus();
         };
     </script>
 </body>
