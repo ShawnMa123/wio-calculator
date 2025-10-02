@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
 from flask_cors import CORS
+from functools import wraps
 import sqlite3
 import json
 import calendar
 from datetime import datetime, date, timedelta
 import os
 import math
+import hashlib
 
 # Try to import chinesecalendar, fallback if not available
 try:
@@ -21,12 +23,28 @@ except ImportError:
 app = Flask(__name__)
 CORS(app)
 
+# Secret key for session management
+app.secret_key = os.environ.get('SECRET_KEY', 'wio-calculator-secret-key-change-in-production')
+
 DATABASE = os.environ.get('DATABASE', 'wio_data.db')
+
+# Default password (hashed with SHA-256)
+# Default password is "wio2025", you can change it via environment variable
+DEFAULT_PASSWORD_HASH = os.environ.get('PASSWORD_HASH', hashlib.sha256('wio2025'.encode()).hexdigest())
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
+
+def login_required(f):
+    """Decorator to require login for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def init_database():
     conn = get_db_connection()
@@ -139,11 +157,38 @@ def calculate_wio_stats(year, month):
         'remaining_workdays': total_workdays - wio_days if status_dict else total_workdays
     }
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page and authentication"""
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        password_hash = hashlib.sha256(password.encode()).hexdigest()
+
+        if password_hash == DEFAULT_PASSWORD_HASH:
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+        else:
+            return render_template('login.html', error='密码错误，请重试')
+
+    # If already logged in, redirect to main page
+    if session.get('logged_in'):
+        return redirect(url_for('index'))
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """Logout and clear session"""
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 @app.route('/api/month_data')
+@login_required
 def get_month_data():
     year = int(request.args.get('year', datetime.now().year))
     month = int(request.args.get('month', datetime.now().month))
@@ -232,6 +277,7 @@ def get_month_data():
     })
 
 @app.route('/api/day_status', methods=['POST'])
+@login_required
 def update_day_status():
     data = request.json
     target_date = data['date']
@@ -249,6 +295,7 @@ def update_day_status():
     return jsonify({'success': True})
 
 @app.route('/api/day_status', methods=['DELETE'])
+@login_required
 def delete_day_status():
     """Delete WIO/WFH status for a specific date (used when converting to holiday)"""
     data = request.json
@@ -262,6 +309,7 @@ def delete_day_status():
     return jsonify({'success': True})
 
 @app.route('/api/settings', methods=['GET'])
+@login_required
 def get_settings():
     conn = get_db_connection()
     settings = conn.execute('SELECT key, value FROM settings').fetchall()
@@ -271,6 +319,7 @@ def get_settings():
     return jsonify(settings_dict)
 
 @app.route('/api/settings', methods=['POST'])
+@login_required
 def update_settings():
     data = request.json
 
@@ -286,6 +335,7 @@ def update_settings():
     return jsonify({'success': True})
 
 @app.route('/api/holidays')
+@login_required
 def get_holidays():
     year = int(request.args.get('year', datetime.now().year))
 
@@ -328,6 +378,7 @@ def get_holidays():
     return jsonify(holidays_list)
 
 @app.route('/api/holidays', methods=['POST'])
+@login_required
 def add_holiday():
     data = request.json
 
@@ -342,6 +393,7 @@ def add_holiday():
     return jsonify({'success': True})
 
 @app.route('/api/holidays', methods=['DELETE'])
+@login_required
 def delete_holiday():
     target_date = request.args.get('date')
 
