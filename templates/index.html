@@ -94,9 +94,15 @@
         }
 
         .current-month {
-            font-size: 1.3em;
+            font-size: 1.4em;
             font-weight: bold;
             color: #2d3748;
+            letter-spacing: 1px;
+        }
+
+        .current-month .year {
+            color: #667eea;
+            font-size: 1.1em;
         }
 
         .calendar {
@@ -548,8 +554,9 @@
                 renderCalendar(data.calendar);
                 updateStats(data.stats);
 
-                document.getElementById('currentMonth').textContent =
-                    `${currentYear}年 ${monthNames[currentMonth - 1]}`;
+                // 显示年份和月份，强调年份（用 span 包裹以应用特殊样式）
+                document.getElementById('currentMonth').innerHTML =
+                    `<span class="year">${currentYear}</span> 年 ${monthNames[currentMonth - 1]}`;
             } catch (error) {
                 console.error('Error loading month data:', error);
             }
