@@ -26,10 +26,58 @@ A comprehensive Work In Office (WIO) tracking and management system built with P
 
 ### Prerequisites | 环境要求
 
+**Option 1: Docker (Recommended) | 选项1：Docker（推荐）**
+- Docker Engine 20.10 or higher | Docker 引擎 20.10或更高版本
+- Docker Compose 2.0 or higher | Docker Compose 2.0或更高版本
+
+**Option 2: Native Python | 选项2：原生Python**
 - Python 3.7 or higher | Python 3.7或更高版本
 - pip (Python package installer) | pip包管理器
 
 ### Installation & Running | 安装与运行
+
+#### 🐳 Docker Deployment (Recommended) | Docker 部署（推荐）
+
+1. **Clone the repository | 克隆仓库**
+   ```bash
+   git clone https://github.com/your-username/wio-calculator.git
+   cd wio-calculator
+   ```
+
+2. **Start with Docker Compose | 使用 Docker Compose 启动**
+   ```bash
+   docker-compose up -d
+   ```
+
+3. **Access the application | 访问应用程序**
+
+   Open your web browser and navigate to: | 在浏览器中打开:
+   ```
+   http://localhost:8080
+   ```
+
+4. **Manage the application | 管理应用程序**
+   ```bash
+   # View logs | 查看日志
+   docker-compose logs -f
+
+   # Stop the application | 停止应用
+   docker-compose down
+
+   # Restart the application | 重启应用
+   docker-compose restart
+
+   # Rebuild after code changes | 代码修改后重新构建
+   docker-compose up -d --build
+   ```
+
+**Data Persistence | 数据持久化:**
+- Database is stored in `./data/wio_data.db` on your host machine
+- Data persists even when container is removed
+- 数据库存储在主机的 `./data/wio_data.db` 目录
+- 即使删除容器，数据也会保留
+
+#### 💻 Native Python Deployment | 原生 Python 部署
 
 1. **Clone or download the project | 克隆或下载项目**
    ```bash
@@ -126,10 +174,13 @@ That's it! The application will automatically create the necessary database file
 wio-calculator/
 ├── server3.py              # Main Flask application | 主Flask应用
 ├── requirements.txt        # Python dependencies | Python依赖
+├── Dockerfile              # Docker image definition | Docker镜像定义
+├── docker-compose.yml      # Docker Compose configuration | Docker Compose配置
+├── .dockerignore          # Docker build exclusions | Docker构建排除文件
 ├── templates/
 │   └── index.html         # Frontend interface | 前端界面
-├── wio_data.db            # SQLite database (auto-created) | SQLite数据库（自动创建）
-├── design.md              # Design documentation | 设计文档
+├── data/                  # Database directory (auto-created) | 数据库目录（自动创建）
+│   └── wio_data.db       # SQLite database | SQLite数据库
 └── README.md              # This file | 说明文件
 ```
 

@@ -21,7 +21,7 @@ except ImportError:
 app = Flask(__name__)
 CORS(app)
 
-DATABASE = 'wio_data.db'
+DATABASE = os.environ.get('DATABASE', 'wio_data.db')
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
