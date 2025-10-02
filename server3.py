@@ -119,7 +119,7 @@ def calculate_wio_stats(year, month):
         date_str = current_date.strftime('%Y-%m-%d')
 
         if is_workday(current_date):
-            day_data = status_dict.get(date_str, {'status': 'WIO', 'work_hours': 1.0})
+            day_data = status_dict.get(date_str, {'status': 'WFH', 'work_hours': 1.0})
             work_hours = day_data['work_hours']
 
             # Add work hours to total workdays
@@ -201,7 +201,7 @@ def get_month_data():
             day_type = 'workday'
             holiday_type = None
 
-        day_data = status_dict.get(date_str, {'status': 'WIO' if day_type == 'workday' else day_type, 'work_hours': 1.0})
+        day_data = status_dict.get(date_str, {'status': 'WFH' if day_type == 'workday' else day_type, 'work_hours': 1.0})
 
         calendar_data.append({
             'date': date_str,

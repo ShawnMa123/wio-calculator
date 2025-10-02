@@ -675,6 +675,25 @@
 
             console.log('Setting day status:', currentClickedDate, status, 'work hours:', workHours);
 
+            // Hide selector immediately for better UX
+            document.getElementById('statusSelector').style.display = 'none';
+
+            // Find and update the UI element immediately (optimistic update)
+            const dayElement = document.querySelector(`[data-date="${currentClickedDate}"]`);
+            if (dayElement) {
+                // Remove old status classes
+                dayElement.classList.remove('wio', 'wfh', 'leave', 'sick', 'workday', 'half-day');
+
+                // Add new status class
+                const statusClass = status.toLowerCase();
+                dayElement.classList.add(statusClass);
+
+                // Add half-day class if needed
+                if (workHours < 1.0) {
+                    dayElement.classList.add('half-day');
+                }
+            }
+
             try {
                 const response = await fetch('/api/day_status', {
                     method: 'POST',
@@ -691,16 +710,20 @@
                 console.log('Response status:', response.status);
 
                 if (response.ok) {
-                    console.log('Status updated successfully, reloading month data...');
+                    console.log('Status updated successfully, reloading stats...');
+                    // Reload full data to update statistics
                     loadMonthData();
                 } else {
                     console.error('Failed to update status:', response.statusText);
+                    // Revert UI on failure
+                    loadMonthData();
                 }
             } catch (error) {
                 console.error('Error updating day status:', error);
+                // Revert UI on error
+                loadMonthData();
             }
 
-            document.getElementById('statusSelector').style.display = 'none';
             currentClickedDate = null;
         }
 
